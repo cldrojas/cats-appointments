@@ -1,0 +1,166 @@
+// This is the main schema for your veterinary platform
+// Prisma will use this to generate database migrations
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl= env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../prisma"
+}
+
+// Represents the pet owners
+model Client {
+  id        String  @id @default(cuid())
+  firstName String
+  lastName  String
+  email     String  @unique
+  phone     String
+  address   String?
+  city      String?
+
+  // A client can have multiple pets
+  pets Pet[]
+
+  // Useful metadata for auditing
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("clients")
+}
+
+// Pets belong to clients
+model Pet {
+  id        String    @id @default(cuid())
+  name      String
+  species   String // Dog, Cat, Bird, etc.
+  breed     String?
+  birthDate DateTime?
+  weight    Float?
+  color     String?
+  gender    String? // Male, Female
+
+  // Relationship with the owner
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  // A pet can have multiple appointments
+  appointments Appointment[]
+
+  // Simplified medical history
+  notes String? // Allergies, special conditions, etc.
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+  @@map("pets")
+}
+
+// The veterinarians who work at the clinic
+model Veterinarian {
+  id        String  @id @default(cuid())
+  firstName String
+  lastName  String
+  email     String  @unique
+  phone     String
+  specialty String? // Surgery, Dermatology, General, etc.
+
+  // For admin panel login
+  password String // Must be hashed with bcrypt
+  role     String  @default("veterinarian") // veterinarian, admin, receptionist
+  isActive Boolean @default(true)
+
+  // A veterinarian can have multiple appointments assigned
+  appointments Appointment[]
+
+  // Availability schedules
+  schedules VeterinarianSchedule[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("veterinarians")
+}
+
+// Defines the working hours for each veterinarian
+model VeterinarianSchedule {
+  id String @id @default(cuid())
+
+  veterinarianId String
+  veterinarian   Veterinarian @relation(fields: [veterinarianId], references: [id], onDelete: Cascade)
+
+  dayOfWeek Int // 0=Sunday, 1=Monday, 2=Tuesday... 6=Saturday
+  startTime String // Format "09:00"
+  endTime   String // Format "17:00"
+
+  isActive Boolean @default(true)
+
+  @@index([veterinarianId])
+  @@map("veterinarian_schedules")
+}
+
+// The heart of the system: appointments
+model Appointment {
+  id String @id @default(cuid())
+
+  // Relationships
+  petId String
+  pet   Pet    @relation(fields: [petId], references: [id])
+
+  veterinarianId String
+  veterinarian   Veterinarian @relation(fields: [veterinarianId], references: [id])
+
+  // Appointment information
+  dateTime DateTime // Date and time of the appointment
+  duration Int      @default(30) // Duration in minutes
+
+  serviceType String // General checkup, Vaccination, Surgery, Emergency, etc.
+  reason      String? // Description of the consultation reason
+
+  // Possible statuses: pending, confirmed, in_progress, completed, cancelled, no_show
+  status String @default("pending")
+
+  // Channel through which it was booked
+  bookingChannel String // web, whatsapp, instagram, phone, in_person
+
+  // Internal notes
+  veterinarianNotes String? // What the veterinarian notes after the consultation
+  diagnosis         String?
+  treatment         String?
+
+  // Reminders sent
+  reminderSent Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([petId])
+  @@index([veterinarianId])
+  @@index([dateTime])
+  @@index([status])
+  @@map("appointments")
+}
+
+// Log of important changes for auditing
+model ActivityLog {
+  id String @id @default(cuid())
+
+  entity   String // appointment, client, pet, veterinarian
+  entityId String // The ID of the affected record
+
+  action  String // create, update, cancel, delete
+  details String? // JSON with additional information
+
+  userId  String? // ID of the veterinarian/admin who made the change
+  channel String? // Where the action came from
+
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("activity_logs")
+}
