@@ -19,12 +19,13 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"],
+      "@contexts/*": ["./contexts/*"],
       "@components/*": ["./components/*"],
       "@lib/*": ["./lib/*"],
+      "@prisma/*":["./prisma/*"],
       "@assets/*": ["./assets/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "prisma/seed.js"],
   "exclude": ["node_modules"]
 }
